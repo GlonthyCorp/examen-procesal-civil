@@ -1,0 +1,960 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Primer parcial PROCESAL CIVIL 2023 — Simulador</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#0f172a;       /* slate-900 */
+      --panel:#111827;    /* gray-900 */
+      --card:#0b1224;     /* dark indigo-ish */
+      --ink:#e5e7eb;      /* gray-200 */
+      --muted:#9ca3af;    /* gray-400 */
+      --accent:#22d3ee;   /* cyan-400 */
+      --accent-2:#a78bfa; /* violet-400 */
+      --ok:#10b981;       /* emerald-500 */
+      --warn:#f59e0b;     /* amber-500 */
+      --danger:#ef4444;   /* red-500 */
+      --ring: 0 0 0 .12rem color-mix(in oklab, var(--accent), transparent 70%);
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: radial-gradient(90rem 90rem at 10% -10%, #1e293b 0%, var(--bg) 40%), var(--bg);
+      color: var(--ink);
+      line-height:1.5;
+    }
+    header{
+      position:sticky; top:0; z-index:100;
+      backdrop-filter:saturate(130%) blur(8px);
+      background: color-mix(in oklab, var(--bg) 70%, transparent);
+      border-bottom:1px solid #1f2937;
+    }
+    .wrap{max-width:1000px; margin:0 auto; padding:18px 20px;}
+    .toolbar{
+      display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between;
+    }
+    .stat{
+      display:flex; gap:12px; align-items:center; flex-wrap:wrap;
+    }
+    .chip{
+      padding:8px 12px; border-radius:999px; background:#0b1224; border:1px solid #1f2937; color:var(--ink);
+      display:inline-flex; gap:8px; align-items:center; font-size:14px;
+    }
+    .chip .dot{width:8px; height:8px; border-radius:999px; background:var(--accent)}
+    .btn{
+      border:1px solid #1f2937; background:#0b1224; color:var(--ink);
+      padding:10px 14px; border-radius:12px; cursor:pointer; font-weight:600;
+      transition: transform .05s ease, box-shadow .12s ease, border-color .12s ease;
+    }
+    .btn:hover{border-color:#374151}
+    .btn:active{transform: translateY(1px)}
+    .btn.primary{background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 35%, #0b1224), #0b1224); border-color:#164e63}
+    .btn.ghost{background:transparent}
+    main{padding:18px 20px 60px}
+    .intro{
+      background: linear-gradient(180deg, rgba(34,211,238,.08), transparent 40%);
+      border:1px solid #1f2937; border-radius: var(--radius); padding:18px; margin:0 auto 18px; max-width:1000px;
+    }
+    .intro h1{margin:.2rem 0 0.2rem; font-weight:800; letter-spacing:.2px}
+    .intro p{color: var(--muted); margin:.2rem 0}
+    .question{
+      border:1px solid #1f2937; border-radius:var(--radius);
+      background:linear-gradient(180deg, rgba(167,139,250,.06), rgba(2,6,23,.6));
+      padding:18px; margin:14px auto; max-width:1000px;
+    }
+    .question h3{margin:.2rem 0 0.5rem; font-size:18px}
+    .meta{color:var(--muted); font-size:13px; margin:0 0 8px}
+    .stems{margin:.2rem 0 .6rem 1.2rem; color:var(--muted)}
+    .stems li{margin:4px 0}
+    .options{display:grid; gap:10px; margin-top:.6rem}
+    label.option{
+      display:flex; gap:10px; align-items:flex-start; padding:12px; border-radius:12px;
+      background:#0b1224; border:1px solid #1f2937; cursor:pointer;
+    }
+    label.option:hover{border-color:#334155}
+    .option input{margin-top:3px}
+    .qnum{
+      display:inline-flex; align-items:center; justify-content:center;
+      width:28px; height:28px; border-radius:999px; background:#0b1224; border:1px solid #1f2937; font-weight:700; margin-right:8px;
+      color: var(--accent-2);
+    }
+    .foot{
+      position:fixed; right:16px; bottom:16px; display:flex; gap:10px; flex-wrap:wrap;
+    }
+    .kbd{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; background:#0b1224; padding:2px 6px; border-radius:6px; border:1px solid #1f2937; color:var(--muted)}
+    .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap toolbar" role="region" aria-label="Barra superior">
+      <div class="stat">
+        <span class="chip" id="progressChip"><span class="dot" aria-hidden="true"></span><strong id="progress">0</strong>/<span id="total">0</span> respondidas</span>
+        <span class="chip"><span class="dot" style="background:var(--ok)"></span>Tiempo: <strong id="timer">00:00</strong></span>
+      </div>
+      <div class="stat">
+        <button class="btn" id="scrollNext">Saltar a la próxima sin responder</button>
+        <button class="btn ghost" id="resetBtn">Reiniciar</button>
+        <button class="btn primary" id="downloadBtn">Descargar mis respuestas (.txt)</button>
+        <button class="btn" onclick="window.print()">Imprimir</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="intro">
+      <h1>Primer parcial PROCESAL CIVIL 2023 — Simulador</h1>
+      <p>Práctica tipo múltiple opción y Verdadero/Falso. <strong>No incluye soluciones</strong> ni claves ocultas. Tus respuestas quedan solo en tu navegador.</p>
+      <p class="meta">Tip: Usá <span class="kbd">Tab</span> para navegar, <span class="kbd">↑/↓</span> para moverte entre opciones, y el botón “Saltar a la próxima sin responder”.</p>
+    </section>
+
+    <form id="examForm">
+
+      <!-- ====== 1 ====== -->
+      <article class="question" id="q1">
+        <h3><span class="qnum">1</span>SON SENTENCIAS ARBITRARIAS:</h3>
+        <ul class="stems">
+          <li>a) la que omitió valorar una prueba convictiva</li>
+          <li>b) la que valoró y aplicó erróneamente una disposición legal</li>
+          <li>c) la que omitió valorar una prueba decisiva</li>
+        </ul>
+        <p class="meta">Seleccione una:</p>
+        <div class="options">
+          <label class="option"><input type="radio" name="q1" value="a"> a) b y c son las correctas</label>
+          <label class="option"><input type="radio" name="q1" value="b"> b) ninguna es correcta</label>
+          <label class="option"><input type="radio" name="q1" value="c"> c) solo b es la correcta</label>
+          <label class="option"><input type="radio" name="q1" value="d"> d) todas son correctas</label>
+        </div>
+      </article>
+
+      <!-- ====== 2 ====== -->
+      <article class="question" id="q2">
+        <h3><span class="qnum">2</span>LAS EXCEPCIONES PREVIAS:</h3>
+        <ul class="stems">
+          <li>a) se interponen ante la falta de cumplimiento de los requisitos de improponibilidad de la demanda</li>
+          <li>b) se interponen ante la falta de cumplimiento de los requisitos de fundabilidad de la demanda</li>
+          <li>c) se interponen ante la falta de cumplimiento de los requisitos de procedibilidad de la demanda</li>
+          <li>d) se interponen ante la falta de cumplimiento de los requisitos legales de la demanda</li>
+        </ul>
+        <p class="meta">Seleccione una:</p>
+        <div class="options">
+          <label class="option"><input type="radio" name="q2" value="a"> a) ninguna es correcta</label>
+          <label class="option"><input type="radio" name="q2" value="b"> b) solo b es la correcta</label>
+          <label class="option"><input type="radio" name="q2" value="c"> c) todas son correctas</label>
+          <label class="option"><input type="radio" name="q2" value="d"> d) c y d son las correctas</label>
+        </div>
+      </article>
+
+      <!-- ====== 3 ====== -->
+      <article class="question" id="q3">
+        <h3><span class="qnum">3</span>LA LITIS PENDENCIA POR CONEXIDAD PROVOCA:</h3>
+        <ul class="stems">
+          <li>a) identidad subjetiva con la consiguiente acumulación objetiva de acciones necesariamente</li>
+          <li>b) identidad objetiva con la consiguiente acumulación subjetiva de acciones necesariamente</li>
+          <li>c) identidad subjetiva, objetiva y causal con la consiguiente acumulación de acciones no necesariamente</li>
+          <li>d) acumulación de acciones siempre con competencia del mismo juez, igual trámite y no contradictorias</li>
+        </ul>
+        <p class="meta">Seleccione una:</p>
+        <div class="options">
+          <label class="option"><input type="radio" name="q3" value="a"> a) solo a es la correcta</label>
+          <label class="option"><input type="radio" name="q3" value="b"> b) ninguna es correcta</label>
+          <label class="option"><input type="radio" name="q3" value="c"> c) solo d es la correcta</label>
+          <label class="option"><input type="radio" name="q3" value="d"> d) todas son correctas</label>
+        </div>
+      </article>
+
+      <!-- ====== 4 ====== -->
+      <article class="question" id="q4">
+        <h3><span class="qnum">4</span>LA FECHA DE LA AUDIENCIA FINAL SE FIJA:</h3>
+        <ul class="stems">
+          <li>a) En la audiencia inicial y no por más de 180 días</li>
+          <li>b) En la audiencia inicial y puede ser más allá de 180 días</li>
+          <li>c) En la audiencia inicial antes de los 180 días</li>
+        </ul>
+        <p class="meta">Seleccione una:</p>
+        <div class="options">
+          <label class="option"><input type="radio" name="q4" value="a"> a) Todas son correctas</label>
+          <label class="option"><input type="radio" name="q4" value="b"> b) A y C son las correctas</label>
+          <label class="option"><input type="radio" name="q4" value="c"> c) Ninguna es correcta</label>
+          <label class="option"><input type="radio" name="q4" value="d"> d) Solo a es la correcta</label>
+        </div>
+      </article>
+
+      <!-- ====== 5 ====== -->
+      <article class="question" id="q5">
+        <h3><span class="qnum">5</span>ES CIERTO EN MATERIA PROBATORIA:</h3>
+        <ul class="stems">
+          <li>a) que nuestro ordenamiento procesal se rige sólo por el principio de la sana crítica racional</li>
+          <li>b) que nuestro ordenamiento procesal se rige sólo por el principio de la sana crítica racional e íntima</li>
+          <li>c) que nuestro ordenamiento procesal se rige sólo por el principio de la íntima convicción</li>
+          <li>d) que nuestro ordenamiento procesal se rige sólo por el principio de la prueba legal</li>
+        </ul>
+        <p class="meta">Seleccione una:</p>
+        <div class="options">
+          <label class="option"><input type="radio" name="q5" value="a"> a) solo a es la correcta</label>
+          <label class="option"><input type="radio" name="q5" value="b"> b) todas son correctas</label>
+          <label class="option"><input type="radio" name="q5" value="c"> c) ninguna es correcta</label>
+          <label class="option"><input type="radio" name="q5" value="d"> d) a y b es la correcta</label>
+        </div>
+      </article>
+
+      <!-- ====== 6 ====== -->
+      <article class="question" id="q6">
+        <h3><span class="qnum">6</span>LA TRANSACCIÓN ES:</h3>
+        <ul class="stems">
+          <li>a) un modo de poner fin al proceso resolviendo el conflicto</li>
+          <li>b) un modo de hacerse concesiones recíprocas</li>
+          <li>c) al igual que la conciliación un modo de poner fin al proceso resolviendo y disolviendo el conflicto</li>
+          <li>d) un modo de poner fin al proceso disolviendo el conflicto</li>
+        </ul>
+        <p class="meta">Seleccione una:</p>
+        <div class="options">
+          <label class="option"><input type="radio" name="q6" value="a"> a) todas son correctas</label>
+          <label class="option"><input type="radio" name="q6" value="b"> b) solo b es correcta</label>
+          <label class="option"><input type="radio" name="q6" value="c"> c) ninguna es correcta</label>
+          <label class="option"><input type="radio" name="q6" value="d"> d) solo a es la correcta</label>
+        </div>
+      </article>
+
+      <!-- ====== 7 ====== -->
+      <article class="question" id="q7">
+        <h3><span class="qnum">7</span>EL EXAMEN JUDICIAL IMPORTA:</h3>
+        <ul class="stems">
+          <li>a) la facultad de que un juez de otra circunscripción efectúe la medida judicial, con la autorización del encomendante</li>
+          <li>b) la facultad de que el juez efectúe el reconocimiento de un lugar siempre con la presencia del oficial de justicia</li>
+          <li>c) una facultad oficiosa a la que puede recurrir el juez para despejar toda duda en el litigio</li>
+        </ul>
+        <p class="meta">Seleccione una:</p>
+        <div class="options">
+          <label class="option"><input type="radio" name="q7" value="a"> a) todas son correctas</label>
+          <label class="option"><input type="radio" name="q7" value="b"> b) solo a es la correcta</label>
+          <label class="option"><input type="radio" name="q7" value="c"> c) ninguna es correcta</label>
+          <label class="option"><input type="radio" name="q7" value="d"> d) a y c son las correctas</label>
+        </div>
+      </article>
+
+      <!-- ====== 8 ====== -->
+      <article class="question" id="q8">
+        <h3><span class="qnum">8</span>SE PUEDE SOLICITAR LA DECLARACIÓN DE INCONSTITUCIONALIDAD DE UNA NORMA:</h3>
+        <ul class="stems">
+          <li>a) sólo con la demanda</li>
+          <li>b) sólo con la contestación de la demanda</li>
+          <li>c) durante el curso del proceso</li>
+          <li>d) en la etapa de alegatos</li>
+        </ul>
+        <p class="meta">Seleccione una:</p>
+        <div class="options">
+          <label class="option"><input type="radio" name="q8" value="a"> a) c y d son las correctas</label>
+          <label class="option"><input type="radio" name="q8" value="b"> b) ninguna es correcta</label>
+          <label class="option"><input type="radio" name="q8" value="c"> c) solo c es la correcta</label>
+          <label class="option"><input type="radio" name="q8" value="d"> d) todas son correctas</label>
+        </div>
+      </article>
+
+      <!-- ====== 9 ====== -->
+      <article class="question" id="q9">
+        <h3><span class="qnum">9</span>LA COSA JUZGADA:</h3>
+        <ul class="stems">
+          <li>a) implica la imposibilidad de modificar una sentencia arbitraria</li>
+          <li>b) implica la imposibilidad de modificar una sentencia dictada con arbitrio del juez</li>
+          <li>c) implica una defensa para imposibilitar la revisión de una sentencia írrita</li>
+          <li>d) implica una defensa para imposibilitar la revisión de un proceso concluido con una sentencia írrita</li>
+        </ul>
+        <p class="meta">Seleccione una:</p>
+        <div class="options">
+          <label class="option"><input type="radio" name="q9" value="a"> a) ninguna es correcta</label>
+          <label class="option"><input type="radio" name="q9" value="b"> b) solo a es correcta</label>
+          <label class="option"><input type="radio" name="q9" value="c"> c) todas son correctas</label>
+          <label class="option"><input type="radio" name="q9" value="d"> d) a y d son correctas</label>
+        </div>
+      </article>
+
+      <!-- ====== 10 ====== -->
+      <article class="question" id="q10">
+        <h3><span class="qnum">10</span>TODOS LOS TESTIGOS:</h3>
+        <ul class="stems">
+          <li>a) declaran ante el juez</li>
+          <li>b) declaran por escrito</li>
+          <li>c) declaran ante un juez delegado de otra jurisdicción</li>
+        </ul>
+        <p class="meta">Seleccione una:</p>
+        <div class="options">
+          <label class="option"><input type="radio" name="q10" value="a"> a) ninguna es correcta</label>
+          <label class="option"><input type="radio" name="q10" value="b"> b) a y c son correctas</label>
+          <label class="option"><input type="radio" name="q10" value="c"> c) solo a es correcta</label>
+          <label class="option"><input type="radio" name="q10" value="d"> d) todas son correctas</label>
+        </div>
+      </article>
+
+      <!-- ====== 11 ====== -->
+      <article class="question" id="q11">
+        <h3><span class="qnum">11</span>En la prueba testimonial, si hay indicios graves de falso testimonio se deberá:</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q11" value="a"> a) Solicitar que se tenga por nula su declaración.</label>
+          <label class="option"><input type="radio" name="q11" value="b"> b) Solicitar tachar al testigo, debiendo resolverse la incidencia.</label>
+          <label class="option"><input type="radio" name="q11" value="c"> c) Solicitar su detención y remisión a la justicia penal.</label>
+          <label class="option"><input type="radio" name="q11" value="d"> d) Oponerse a que el testigo siga declarando.</label>
+        </div>
+      </article>
+
+      <!-- ====== 12 ====== -->
+      <article class="question" id="q12">
+        <h3><span class="qnum">12</span>¿Cómo se notifican las actuaciones judiciales al declarado rebelde?</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q12" value="a"> a) Lista automática, salvo sentencia y decreto de rebeldía que se notifican como la demanda.</label>
+          <label class="option"><input type="radio" name="q12" value="b"> b) Todo por lista salvo el decreto de rebeldía, que va por cédula al domicilio real.</label>
+          <label class="option"><input type="radio" name="q12" value="c"> c) Lista y edictos, salvo comparecer a derecho, decreto de rebeldía y sentencia por cédula al domicilio real.</label>
+          <label class="option"><input type="radio" name="q12" value="d"> d) Lista automática, salvo sentencia y rebeldía como demanda; si domicilio ignorado, por edictos.</label>
+        </div>
+      </article>
+
+      <!-- ====== 13 ====== -->
+      <article class="question" id="q13">
+        <h3><span class="qnum">13</span>En caso de requerimiento a un tercero de un documento:</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q13" value="a"> a) Resuelta la oposición del tercero, el tribunal podrá extraer el documento coactivamente.</label>
+          <label class="option"><input type="radio" name="q13" value="b"> b) Si está en poder de la contraria, puede negarse alegando no poseerlo sin culpa, lo que provoca tener por exacto su contenido.</label>
+          <label class="option"><input type="radio" name="q13" value="c"> c) Si el tercero alega pertenencia y perjuicio por exhibición, el litigante puede recurrir la manifestación.</label>
+          <label class="option"><input type="radio" name="q13" value="d"> d) Si está en poder de terceros, estos pueden oponerse, provocando tener por exacto su contenido.</label>
+        </div>
+      </article>
+
+      <!-- ====== 14 ====== -->
+      <article class="question" id="q14">
+        <h3><span class="qnum">14</span>En caso de declaración anticipada de testigo:</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q14" value="a"> a) Puede solicitarse inaudita parte.</label>
+          <label class="option"><input type="radio" name="q14" value="b"> b) Puede solicitarse, asegurando el derecho de defensa, con intervención del defensor oficial.</label>
+          <label class="option"><input type="radio" name="q14" value="c"> c) Exclusivamente si hay riesgo para la vida del declarante.</label>
+          <label class="option"><input type="radio" name="q14" value="d"> d) Puede solicitarse, asegurando su derecho de defensa, con intervención del defensor oficial.</label>
+        </div>
+      </article>
+
+      <!-- ====== 15 ====== -->
+      <article class="question" id="q15">
+        <h3><span class="qnum">15</span>Pedido de inconstitucionalidad o inconvencionalidad de una norma:</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q15" value="a"> a) La actora solo en la demanda.</label>
+          <label class="option"><input type="radio" name="q15" value="b"> b) No se admiten planteos una vez dictada sentencia en proceso de conocimiento.</label>
+          <label class="option"><input type="radio" name="q15" value="c"> c) La demandada solo en el responde.</label>
+          <label class="option"><input type="radio" name="q15" value="d"> d) Cualquiera de las partes en cualquier momento del proceso de conocimiento, incluso luego de la sentencia.</label>
+        </div>
+      </article>
+
+      <!-- ====== 16 ====== -->
+      <article class="question" id="q16">
+        <h3><span class="qnum">16</span>El otorgamiento del beneficio de litigar sin gastos:</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q16" value="a"> a) Exime tasas de justicia, pero no las demás costas si hay condena.</label>
+          <label class="option"><input type="radio" name="q16" value="b"> b) Una vez otorgado, no puede revocarse hasta sentencia de condena.</label>
+          <label class="option"><input type="radio" name="q16" value="c"> c) Exime de todos los gastos sin importar el resultado.</label>
+          <label class="option"><input type="radio" name="q16" value="d"> d) Solo difiere el pago hasta la sentencia, condicionado al resultado.</label>
+        </div>
+      </article>
+
+      <!-- ====== 17 ====== -->
+      <article class="question" id="q17">
+        <h3><span class="qnum">17</span>Si estamos en presencia de un hecho notorio, relacionado con la causa:</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q17" value="a"> a) Debe alegarse, pero no probarse.</label>
+          <label class="option"><input type="radio" name="q17" value="b"> b) No requiere ser alegado, ni podrá ser probado.</label>
+          <label class="option"><input type="radio" name="q17" value="c"> c) No requiere ser alegado, pero sí debe ser probado.</label>
+          <label class="option"><input type="radio" name="q17" value="d"> d) Debe ser alegado y probado.</label>
+        </div>
+      </article>
+
+      <!-- ====== 18 ====== -->
+      <article class="question" id="q18">
+        <h3><span class="qnum">18</span>Inspección ocular del lugar del hecho (objeto del litigio), ¿quién la realiza?</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q18" value="a"> a) El Secretario, autorizado por el Juez, quien dará fe.</label>
+          <label class="option"><input type="radio" name="q18" value="b"> b) El Juez no puede delegar: debe realizarla personalmente.</label>
+          <label class="option"><input type="radio" name="q18" value="c"> c) El Juez del Tribunal, aun a más de 450 km.</label>
+          <label class="option"><input type="radio" name="q18" value="d"> d) El Juez puede delegarla en el Oficial de Justicia del lugar.</label>
+        </div>
+      </article>
+
+      <!-- ====== 19 ====== -->
+      <article class="question" id="q19">
+        <h3><span class="qnum">19</span>CPCCTM: si la actora no denuncia domicilio real y electrónico, el Tribunal debe:</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q19" value="a"> a) Archivar las actuaciones.</label>
+          <label class="option"><input type="radio" name="q19" value="b"> b) Desestimar sin más la demanda si vencido el plazo no cumpliera.</label>
+          <label class="option"><input type="radio" name="q19" value="c"> c) Dar traslado igual, por no ser de relevancia.</label>
+          <label class="option"><input type="radio" name="q19" value="d"> d) Dictar auto emplazando por 3 días para subsanar defectos.</label>
+        </div>
+      </article>
+
+      <!-- ====== 20 ====== -->
+      <article class="question" id="q20">
+        <h3><span class="qnum">20</span>Testimonial de una dignidad eclesiástica:</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q20" value="a"> a) Se pone el pliego a disposición de la contraria para oposición o aclaraciones.</label>
+          <label class="option"><input type="radio" name="q20" value="b"> b) En la Audiencia Final, por ser prueba testimonial.</label>
+          <label class="option"><input type="radio" name="q20" value="c"> c) Amparado en secreto profesional, no declara ni personalmente ni por informe.</label>
+          <label class="option"><input type="radio" name="q20" value="d"> d) Declara mediante informe, con preguntas enviadas en sobre cerrado por cada parte.</label>
+        </div>
+      </article>
+
+      <!-- ====== 21 ====== -->
+      <article class="question" id="q21">
+        <h3><span class="qnum">21</span>Efectos de la excepción de incompetencia:</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q21" value="a"> a) El juez competente invalida los actos cumplidos ante juez incompetente.</label>
+          <label class="option"><input type="radio" name="q21" value="b"> b) Orden de remitir el expediente al tribunal competente (declinatoria).</label>
+          <label class="option"><input type="radio" name="q21" value="c"> c) Validez de los actos ante juez incompetente y continuación ante el competente según estado.</label>
+          <label class="option"><input type="radio" name="q21" value="d"> d) Ordena el archivo (inhibitoria).</label>
+        </div>
+      </article>
+
+      <!-- ====== 22 ====== -->
+      <article class="question" id="q22">
+        <h3><span class="qnum">22</span>¿Qué es el allanamiento?</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q22" value="a"> a) Sometimiento a los hechos, pero no al derecho expuesto por el actor.</label>
+          <label class="option"><input type="radio" name="q22" value="b"> b) Reconocimiento del actor de la alegación jurídica del demandado.</label>
+          <label class="option"><input type="radio" name="q22" value="c"> c) Sometimiento a los hechos y al derecho expuesto por el actor, abandonando oposición.</label>
+          <label class="option"><input type="radio" name="q22" value="d"> d) Declaración del demandado de someterse al derecho en que se funda la sentencia solicitada.</label>
+        </div>
+      </article>
+
+      <!-- ====== 23 ====== -->
+      <article class="question" id="q23">
+        <h3><span class="qnum">23</span>En caso de litispendencia por conexidad:</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q23" value="a"> a) Todos los procesos se acumulan donde se interpuso la excepción.</label>
+          <label class="option"><input type="radio" name="q23" value="b"> b) Cualquiera podrá ejercer acumuladas todas las acciones contra su contrario si son competentes, mismo procedimiento y no contradictorias.</label>
+          <label class="option"><input type="radio" name="q23" value="c"> c) Procede la acumulación cuando haya comunidad o conexidad de causas u objetos, no por simple pluralidad subjetiva.</label>
+          <label class="option"><input type="radio" name="q23" value="d"> d) Si se acumulan por objeto o sujetos, se justifica porque la sentencia de uno hará cosa juzgada en el otro.</label>
+        </div>
+      </article>
+
+      <!-- ====== 24 ====== -->
+      <article class="question" id="q24">
+        <h3><span class="qnum">24</span>Si al dictar sentencia el juez no tiene elementos probatorios suficientes:</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q24" value="a"> a) Debe fallar contra quien tenía la carga de la prueba.</label>
+          <label class="option"><input type="radio" name="q24" value="b"> b) Puede abstenerse y decretar sobreseimiento.</label>
+          <label class="option"><input type="radio" name="q24" value="c"> c) Debe disponer de oficio nuevas medidas de prueba.</label>
+          <label class="option"><input type="radio" name="q24" value="d"> d) Debe aplicar cargas dinámicas de la prueba y resolver.</label>
+        </div>
+      </article>
+
+      <!-- ====== 25 ====== -->
+      <article class="question" id="q25">
+        <h3><span class="qnum">25</span>Desistimiento de la acción por el actor, inmediatamente posterior al traslado de la demanda:</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q25" value="a"> a) El juez fija audiencia entre partes, con intervención del MPF para requerir conformidad.</label>
+          <label class="option"><input type="radio" name="q25" value="b"> b) Se tiene por desistido sin requerir conformidad de la contraria.</label>
+          <label class="option"><input type="radio" name="q25" value="c"> c) El juez puede ordenar audiencia para que la demandada renuncie a su acción.</label>
+        </div>
+      </article>
+
+      <!-- ====== 26 ====== -->
+      <article class="question" id="q26">
+        <h3><span class="qnum">26</span>Impugnación de instrumentos privados no firmados atribuidos a terceros:</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q26" value="a"> a) Fijar audiencia de reconocimiento a pedido del oferente; no comparece: conducción con fuerza pública.</label>
+          <label class="option"><input type="radio" name="q26" value="b"> b) Fijar audiencia de reconocimiento a pedido del oferente; si no comparece: autenticidad del documento.</label>
+          <label class="option"><input type="radio" name="q26" value="c"> c) Fijar audiencia de reconocimiento por iniciativa del tribunal.</label>
+          <label class="option"><input type="radio" name="q26" value="d"> d) Fijar audiencia a pedido del oferente; si no comparece: multa.</label>
+        </div>
+      </article>
+
+      <!-- ====== 27 ====== -->
+      <article class="question" id="q27">
+        <h3><span class="qnum">27</span>Demanda manifiestamente improponible (falta de fundabilidad o de interés tutelado):</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q27" value="a"> a) Vista previa al MPF y rechazo sin más, fundado.</label>
+          <label class="option"><input type="radio" name="q27" value="b"> b) Audiencia con el actor para que aclare su pretensión.</label>
+          <label class="option"><input type="radio" name="q27" value="c"> c) Rechazar in limine por decreto, con fundamentos sucintos.</label>
+          <label class="option"><input type="radio" name="q27" value="d"> d) Audiencia con actor y MPF, y plazo de 3 días para subsanar.</label>
+        </div>
+      </article>
+
+      <!-- ====== 28 ====== -->
+      <article class="question" id="q28">
+        <h3><span class="qnum">28</span>Audiencia inicial — Notificación:</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q28" value="a"> a) Solo domicilio real y legal por cédula.</label>
+          <label class="option"><input type="radio" name="q28" value="b"> b) Por cédula al domicilio real, a dirección electrónica de litigantes y al procesal electrónico; si ignorado, por edictos.</label>
+          <label class="option"><input type="radio" name="q28" value="c"> c) Solo al domicilio legal de los profesionales.</label>
+          <label class="option"><input type="radio" name="q28" value="d"> d) Por cédula al domicilio real, a dirección electrónica y al domicilio procesal electrónico.</label>
+        </div>
+      </article>
+
+      <!-- ====== 29 ====== -->
+      <article class="question" id="q29">
+        <h3><span class="qnum">29</span>Prueba pericial: el informe debe producirse en 20 días desde la aceptación del cargo; su incumplimiento importa:</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q29" value="a"> a) Designación inmediata de otro perito.</label>
+          <label class="option"><input type="radio" name="q29" value="b"> b) Posible multa, sin perjuicio de daños y perjuicios.</label>
+          <label class="option"><input type="radio" name="q29" value="c"> c) Ejecución de honorarios por haber aceptado el cargo.</label>
+          <label class="option"><input type="radio" name="q29" value="d"> d) Remoción automática con causa.</label>
+        </div>
+      </article>
+
+      <!-- ====== 30 ====== -->
+      <article class="question" id="q30">
+        <h3><span class="qnum">30</span>Actor o reconviniente: ¿pueden modificar o ampliar demandas y/o respondes?</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q30" value="a"> a) Ambos solo pueden ampliar mientras no se haya notificado el traslado.</label>
+          <label class="option"><input type="radio" name="q30" value="b"> b) Tanto actor como reconviniente pueden modificar, ampliar e incluso cambiar pretensión o defensa después de notificado el traslado (según el caso).</label>
+          <label class="option"><input type="radio" name="q30" value="c"> c) No podrán ampliar ni modificar sus respondes hasta después del traslado para negar nuevos hechos y ofrecer nueva prueba.</label>
+          <label class="option"><input type="radio" name="q30" value="d"> d) Ambos pueden modificar o ampliar respondes si no se notificó el traslado para negar nuevos hechos y ofrecer nueva prueba.</label>
+        </div>
+      </article>
+
+      <!-- ====== V/F (31–70) ====== -->
+      <article class="question" id="q31">
+        <h3><span class="qnum">31</span>La caducidad de instancia puede ser planteada teniendo fecha fijada de audiencia inicial.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q31" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q31" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q32">
+        <h3><span class="qnum">32</span>Para la “anotación de litis”, que asegura publicidad de procesos sobre inmuebles, basta verosimilitud del derecho y contracautela.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q32" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q32" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q33">
+        <h3><span class="qnum">33</span>Las resoluciones de la Cámara de Apelaciones pueden publicarse con dos firmas y no necesariamente con tres.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q33" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q33" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q34">
+        <h3><span class="qnum">34</span>Si en la apelación libre se produjera prueba en la alzada, y quien la ofrezca fuera el apelado, debe correrse vista por cinco días al apelado para contraprueba.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q34" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q34" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q35">
+        <h3><span class="qnum">35</span>El beneficio de litigar sin gastos se pide mediante formulario, es diligencia preliminar, con intervención del MPF y traslado a la contraria.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q35" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q35" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q36">
+        <h3><span class="qnum">36</span>La medida cautelar y la autosatisfactiva dependen del resultado del proceso principal; son provisionales.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q36" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q36" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q37">
+        <h3><span class="qnum">37</span>La subasta será realizada por el martillero designado por el Tribunal a propuesta del ejecutante, salvo leyes especiales en contrario.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q37" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q37" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q38">
+        <h3><span class="qnum">38</span>Como regla general, los incidentes suspenden la prosecución del proceso principal.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q38" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q38" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q39">
+        <h3><span class="qnum">39</span>El recurso extraordinario provincial puede ser rechazado in limine previa vista a la recurrida.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q39" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q39" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q40">
+        <h3><span class="qnum">40</span>Una resolución de tribunal colegiado puede contener tres votos con diferentes fundamentos.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q40" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q40" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q41">
+        <h3><span class="qnum">41</span>Para que exista caducidad de instancia deben concurrir: instancia principal o incidental, inactividad procesal absoluta o falta de actividad idónea, transcurso del plazo y resolución que declare la extinción.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q41" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q41" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q42">
+        <h3><span class="qnum">42</span>En Pequeñas Causas solo será apelable la Sentencia en forma abreviada y si el recurrente es proveedor el recurso será sin efecto suspensivo y sin beneficio de gratuidad.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q42" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q42" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q43">
+        <h3><span class="qnum">43</span>Puede acumularse el proceso donde se planteó la excepción de litispendencia por conexidad causal al primer proceso iniciado.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q43" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q43" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q44">
+        <h3><span class="qnum">44</span>En preparación de la vía monitoria, si el ejecutado niega la firma, el juez puede comprobar autenticidad previo dictamen de perito calígrafo.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q44" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q44" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q45">
+        <h3><span class="qnum">45</span>El auto que decide un incidente innominado es apelable en forma abreviada.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q45" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q45" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q46">
+        <h3><span class="qnum">46</span>En segunda instancia solo procede la caducidad hasta que el Tribunal ordena la expresión de agravios.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q46" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q46" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q47">
+        <h3><span class="qnum">47</span>Fuera del embargo preventivo y secuestro, puede disponerse, a pedido de quien los tiene, el depósito de muebles o semovientes cuando la ley lo autorice como medida preventiva.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q47" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q47" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q48">
+        <h3><span class="qnum">48</span>Si la oposición es formalmente procedente, se corre traslado por 5 días al actor, quien puede ofrecer contraprueba, pudiendo ejecutarse la sentencia monitoria dictada.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q48" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q48" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q49">
+        <h3><span class="qnum">49</span>La reposición procede contra autos y sentencias inapelables para que el mismo tribunal revoque por contrario imperio.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q49" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q49" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q50">
+        <h3><span class="qnum">50</span>Si se cuestiona la cosa juzgada material de una sentencia (art. 144 inc. 9 Const. Provincial), queda expedita la vía del recurso de revisión.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q50" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q50" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q51">
+        <h3><span class="qnum">51</span>Si no hubo oposiciones a la segunda monitoria, no puede apelarse la regulación de honorarios.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q51" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q51" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q52">
+        <h3><span class="qnum">52</span>El plazo para apelar en desalojo es de cinco días.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q52" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q52" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q53">
+        <h3><span class="qnum">53</span>La tutela anticipada exige una fuerte probabilidad de atendibilidad.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q53" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q53" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q54">
+        <h3><span class="qnum">54</span>Si el demandado está rebelde, procede embargo preventivo (arts. 117 y 112 CPCCyT) ofreciendo solo la contracautela legal o del tribunal.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q54" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q54" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q55">
+        <h3><span class="qnum">55</span>La nulidad solo puede pedirla quien invoque interés jurídico, no la haya provocado y no se haya subsanado por consentimiento expreso o tácito.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q55" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q55" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q56">
+        <h3><span class="qnum">56</span>Si la reposición la interpone quien pidió la resolución y se ve perjudicado, debe correrse vista a la contraria por 3 días.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q56" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q56" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q57">
+        <h3><span class="qnum">57</span>Los incidentes deben fundarse clara y concretamente en hechos y derecho, acompañando la prueba instrumental que no obre en autos.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q57" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q57" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q58">
+        <h3><span class="qnum">58</span>De la subasta y rendición de cuentas se corre vista a los litigantes por cinco días.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q58" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q58" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q59">
+        <h3><span class="qnum">59</span>La inhibición general de bienes debe pedirse junto al embargo preventivo para hacerlo efectivo subsidiariamente.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q59" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q59" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q60">
+        <h3><span class="qnum">60</span>Si se niega el carácter de locatario, el proceso tramitará como de conocimiento.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q60" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q60" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q61">
+        <h3><span class="qnum">61</span>En caso de bienes inmuebles, debe notificarse a los ocupantes antes de la subasta para que ejerzan sus derechos.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q61" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q61" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q62">
+        <h3><span class="qnum">62</span>El incidente de nulidad puede plantearse para cuestionar vicios en la sentencia.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q62" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q62" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q63">
+        <h3><span class="qnum">63</span>Las medidas cautelares aseguran el cumplimiento de una futura sentencia. Presupuestos: verosimilitud en el derecho, peligro en la demora y contracautela.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q63" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q63" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q64">
+        <h3><span class="qnum">64</span>Aclaratoria: autos en 1 día desde notificación; sentencias en 2 días desde notificación.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q64" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q64" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q65">
+        <h3><span class="qnum">65</span>Informes que debe pedir el martillero: Registro de la Propiedad y Archivo Judicial, Catastro, Irrigación, Aguas Mendocinas, Municipalidad, Expensas y ATM.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q65" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q65" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q66">
+        <h3><span class="qnum">66</span>Los incidentes son cuestiones que se suscitan durante la sustanciación de un proceso y con ocasión del mismo, pudiendo o no ser accesorias.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q66" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q66" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q67">
+        <h3><span class="qnum">67</span>En el embargo preventivo hay desapoderamiento del bien, quedando una de las partes o un tercero como depositario.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q67" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q67" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q68">
+        <h3><span class="qnum">68</span>Desalojo con contrato verbal: traslado por 20 días y además debe cumplirse con art. 237 inc. II ap. 4 CPCCyT (hacer conocer la sentencia e identificar habitantes).</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q68" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q68" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q69">
+        <h3><span class="qnum">69</span>La prueba rendida en un proceso caduco no puede utilizarse en otro proceso.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q69" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q69" value="F"> Falso</label>
+        </div>
+      </article>
+
+      <article class="question" id="q70">
+        <h3><span class="qnum">70</span>Si el locador pagó expensas del inmueble, puede reclamarlas en el proceso monitorio por cobro de alquileres.</h3>
+        <div class="options">
+          <label class="option"><input type="radio" name="q70" value="V"> Verdadero</label>
+          <label class="option"><input type="radio" name="q70" value="F"> Falso</label>
+        </div>
+      </article>
+
+    </form>
+  </main>
+
+  <div class="foot">
+    <span class="chip">Preguntas totales: <strong id="totalBottom">0</strong></span>
+  </div>
+
+  <script>
+    // Timer
+    let seconds = 0;
+    const timerEl = document.getElementById('timer');
+    setInterval(() => {
+      seconds++;
+      const m = String(Math.floor(seconds/60)).padStart(2,'0');
+      const s = String(seconds%60).padStart(2,'0');
+      timerEl.textContent = `${m}:${s}`;
+    }, 1000);
+
+    // Progress
+    const form = document.getElementById('examForm');
+    const questions = Array.from(document.querySelectorAll('.question'));
+    const total = questions.length;
+    const totalEl = document.getElementById('total');
+    const totalBottom = document.getElementById('totalBottom');
+    const progressEl = document.getElementById('progress');
+    totalEl.textContent = total;
+    totalBottom.textContent = total;
+
+    function updateProgress(){
+      const answered = questions.reduce((acc, q)=>{
+        const name = q.querySelector('input[type="radio"]')?.name;
+        if(!name) return acc;
+        const checked = q.querySelector(`input[name="${name}"]:checked`);
+        return acc + (checked ? 1 : 0);
+      },0);
+      progressEl.textContent = answered;
+      // color hint
+      const chip = document.getElementById('progressChip');
+      const pct = answered/total;
+      chip.style.borderColor = pct===1 ? 'var(--ok)' : pct>0.5 ? 'var(--accent)' : '#1f2937';
+    }
+
+    form.addEventListener('change', updateProgress);
+    updateProgress();
+
+    // Jump to next unanswered
+    document.getElementById('scrollNext').addEventListener('click', ()=>{
+      const next = questions.find(q=>{
+        const name = q.querySelector('input[type="radio"]')?.name;
+        return name && !q.querySelector(`input[name="${name}"]:checked`);
+      });
+      if(next){
+        next.scrollIntoView({behavior:'smooth', block:'start'});
+        next.classList.add('pulse');
+        setTimeout(()=>next.classList.remove('pulse'), 600);
+      } else {
+        alert('¡Ya respondiste todas las preguntas!');
+      }
+    });
+
+    // Reset
+    document.getElementById('resetBtn').addEventListener('click', ()=>{
+      if(!confirm('¿Reiniciar todas las respuestas?')) return;
+      const inputs = form.querySelectorAll('input[type="radio"]');
+      inputs.forEach(i=> i.checked = false);
+      seconds = 0;
+      updateProgress();
+      window.scrollTo({top:0, behavior:'smooth'});
+    });
+
+    // Download answers (TXT)
+    function collectAnswers(){
+      const lines = [];
+      questions.forEach((q, idx)=>{
+        const qnum = idx+1;
+        const name = q.querySelector('input[type="radio"]')?.name;
+        let val = '';
+        if(name){
+          const checked = q.querySelector(`input[name="${name}"]:checked`);
+          if(checked){
+            const label = checked.closest('label').innerText.trim();
+            val = label;
+          } else {
+            val = '(sin responder)';
+          }
+        }
+        // Extract question title text
+        const title = q.querySelector('h3')?.innerText.replace(/^\d+\s*/, '').trim() || `Pregunta ${qnum}`;
+        lines.push(`${qnum}. ${title}\n→ ${val}\n`);
+      });
+      return lines.join('\n');
+    }
+
+    document.getElementById('downloadBtn').addEventListener('click', ()=>{
+      const content = [
+        'Primer parcial PROCESAL CIVIL 2023 — Respuestas del simulador',
+        `Tiempo empleado: ${timerEl.textContent}`,
+        `Contestadas: ${progressEl.textContent} / ${total}`,
+        '---',
+        collectAnswers()
+      ].join('\n\n');
+      const blob = new Blob([content], {type:'text/plain;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const stamp = new Date().toISOString().replace(/[:.]/g,'-');
+      a.download = `respuestas-procesal-${stamp}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(url);
+      a.remove();
+    });
+
+    // Accessibility: hitting Enter on a focused card toggles the radio
+    document.querySelectorAll('label.option').forEach(label=>{
+      label.tabIndex = 0;
+      label.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter' || e.key===' '){
+          const input = label.querySelector('input');
+          if(input){ input.checked = true; input.dispatchEvent(new Event('change', {bubbles:true})); }
+          e.preventDefault();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
